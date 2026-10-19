@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Android 11+: hace visible DIGIP al PackageManager sin pedir QUERY_ALL_PACKAGES. -->
+    <queries>
+        <package android:name="digip.patagoniawms.prod" />
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="ALAMO PDA Launcher"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ALAMOPDALauncher">
+
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+
+            <!-- Permite abrir el puente manualmente desde el icono. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Punto BROWSABLE que puede invocar el navegador del Control PDA. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="alamopda"
+                    android:host="open"
+                    android:pathPrefix="/digip" />
+            </intent-filter>
+
+        </activity>
+    </application>
+
+</manifest>
