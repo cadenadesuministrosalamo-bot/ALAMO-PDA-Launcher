@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
         android:gravity="center"
-        android:text="Abriendo DIGIP WMS…"
+        android:text="Acceso protegido"
         android:textColor="@color/textPrimary"
         android:textSize="22sp"
         android:textStyle="bold" />
@@ -31,7 +31,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:gravity="center"
-        android:text="Buscando la aplicación instalada."
+        android:text="Inicie sesión en Control PDA para abrir DIGIP WMS."
         android:textColor="@color/textSecondary"
         android:textSize="15sp" />
 
@@ -42,6 +42,28 @@
         android:layout_marginTop="28dp"
         android:backgroundTint="@color/alamoRed"
         android:text="REINTENTAR"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/controlButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="@color/alamoRed"
+        android:text="ABRIR CONTROL PDA"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/adminButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="@color/grayButton"
+        android:text="RECUPERACIÓN / PANEL ADMIN"
         android:textColor="@android:color/white"
         android:textStyle="bold"
         android:visibility="gone" />
