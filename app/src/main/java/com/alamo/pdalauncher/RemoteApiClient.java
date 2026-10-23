@@ -34,6 +34,18 @@ final class RemoteApiClient {
         return getJson(url.toString());
     }
 
+    static JSONObject messageAck(String apiUrl, String pda, String deviceToken,
+                                 String messageId) throws Exception {
+        Uri url = Uri.parse(apiUrl).buildUpon()
+                .appendQueryParameter("api", "launcher")
+                .appendQueryParameter("action", "msgack")
+                .appendQueryParameter("pda", pda)
+                .appendQueryParameter("deviceToken", deviceToken)
+                .appendQueryParameter("messageId", messageId)
+                .build();
+        return getJson(url.toString());
+    }
+
     static JSONObject ack(String apiUrl, String pda, String deviceToken,
                           String commandId, String status, String detail) throws Exception {
         Uri.Builder b = Uri.parse(apiUrl).buildUpon()
@@ -59,7 +71,7 @@ final class RemoteApiClient {
             connection.setInstanceFollowRedirects(true);
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("User-Agent", "ALAMO-PDA-Launcher/2.0");
+            connection.setRequestProperty("User-Agent", "ALAMO-PDA-Launcher/2.1");
 
             int code = connection.getResponseCode();
             InputStream stream = code >= 200 && code < 400

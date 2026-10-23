@@ -17,10 +17,6 @@ import org.json.JSONObject;
 
 public class LauncherActivity extends Activity {
 
-    private static final String DIGIP_PACKAGE = "digip.patagoniawms.prod";
-    private static final String DIGIP_SPLASH =
-            "digip.patagoniawms.UI.Activities.activitySplash";
-
     private TextView statusText;
     private TextView detailText;
     private Button retryButton;
@@ -86,7 +82,7 @@ public class LauncherActivity extends Activity {
 
     private void redeemAuthorization(String apiUrl, String pda, String auth) {
         statusText.setText("Validando acceso…");
-        detailText.setText("Control PDA está autorizando la apertura de DIGIP WMS.");
+        detailText.setText("Control PDA está autorizando la apertura de la aplicación operativa.");
         retryButton.setVisibility(View.GONE);
         controlButton.setVisibility(View.GONE);
         adminButton.setVisibility(View.GONE);
@@ -104,6 +100,16 @@ public class LauncherActivity extends Activity {
                 String serverApiUrl = json.optString("apiUrl", apiUrl);
                 String controlUrl = json.optString("controlUrl", "");
                 String adminUrl = json.optString("adminUrl", "");
+                String companyName = json.optString("companyName", "ALAMO");
+                String appName = json.optString("appName", "APLICACIÓN OPERATIVA");
+                String appPackage = json.optString("appPackage", "");
+                String appActivity = json.optString("appActivity", "");
+                boolean appEnabled = json.optBoolean("appEnabled", true);
+
+                if (!appEnabled) {
+                    runOnUiThread(() -> showProtected("La aplicación operativa está deshabilitada por Administración."));
+                    return;
+                }
 
                 if (deviceToken.trim().isEmpty()) {
                     runOnUiThread(() -> showProtected("El servidor no entregó una credencial válida al Launcher."));
@@ -116,7 +122,11 @@ public class LauncherActivity extends Activity {
                         deviceToken,
                         serverApiUrl,
                         controlUrl,
-                        adminUrl
+                        adminUrl,
+                        companyName,
+                        appName,
+                        appPackage,
+                        appActivity
                 );
                 RemoteMonitorService.start(this);
                 authorizedThisLaunch = true;
@@ -136,49 +146,52 @@ public class LauncherActivity extends Activity {
             return;
         }
 
-        statusText.setText("Abriendo DIGIP WMS…");
+        String appName = safe(RemoteStore.getAppName(this));
+        String appPackage = safe(RemoteStore.getAppPackage(this));
+        String appActivity = safe(RemoteStore.getAppActivity(this));
+        if (appName.isEmpty()) appName = "APLICACIÓN OPERATIVA";
+
+        statusText.setText("Abriendo " + appName + "…");
         detailText.setText("Acceso autorizado por Control PDA.");
         retryButton.setVisibility(View.GONE);
 
+        if (appPackage.isEmpty()) {
+            showDigipError("No hay aplicación configurada.", "Administración debe configurar el package Android de la aplicación operativa.");
+            return;
+        }
+
+        if (!appActivity.isEmpty()) {
+            try {
+                Intent explicitIntent = new Intent(Intent.ACTION_MAIN);
+                explicitIntent.setComponent(new ComponentName(appPackage, appActivity));
+                explicitIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                explicitIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(explicitIntent);
+                finish();
+                return;
+            } catch (Exception ignored) {
+                // Respaldo mediante PackageManager debajo.
+            }
+        }
+
         try {
-            Intent launchIntent = getPackageManager().getLaunchIntentForPackage(DIGIP_PACKAGE);
+            Intent launchIntent = getPackageManager().getLaunchIntentForPackage(appPackage);
             if (launchIntent != null) {
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(launchIntent);
                 finish();
                 return;
             }
-        } catch (SecurityException | ActivityNotFoundException ignored) {
-            // Respaldo debajo.
-        } catch (Exception ignored) {
-            // Respaldo debajo.
-        }
+        } catch (Exception ignored) {}
 
-        try {
-            Intent explicitIntent = new Intent(Intent.ACTION_MAIN);
-            explicitIntent.setComponent(new ComponentName(DIGIP_PACKAGE, DIGIP_SPLASH));
-            explicitIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-            explicitIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(explicitIntent);
-            finish();
-
-        } catch (SecurityException e) {
-            showDigipError(
-                    "Android bloqueó el acceso a DIGIP WMS.",
-                    "La aplicación está instalada, pero Android rechazó su apertura. " + safeMessage(e)
-            );
-        } catch (ActivityNotFoundException e) {
-            showDigipError(
-                    "No se encontró DIGIP WMS.",
-                    "Verifique que el paquete " + DIGIP_PACKAGE + " esté instalado en este PDA."
-            );
-        } catch (Exception e) {
-            showDigipError("No se pudo abrir DIGIP WMS.", safeMessage(e));
-        }
+        showDigipError(
+                "No se pudo abrir " + appName + ".",
+                "Verifique que el package " + appPackage + " y la Activity configurada sean correctos."
+        );
     }
 
     private void showProtected() {
-        showProtected("Para abrir DIGIP WMS, inicie sesión en Control PDA y pulse ABRIR DIGIP WMS.");
+        showProtected("Para abrir la aplicación operativa, inicie sesión en Control PDA y use el botón configurado por Administración.");
     }
 
     private void showProtected(String detail) {
@@ -192,7 +205,7 @@ public class LauncherActivity extends Activity {
     private void showDigipError(String title, String detail) {
         statusText.setText(title);
         detailText.setText(detail);
-        retryButton.setText("REINTENTAR DIGIP");
+        retryButton.setText("REINTENTAR APLICACIÓN");
         retryButton.setVisibility(View.VISIBLE);
         updateRecoveryButtons();
     }

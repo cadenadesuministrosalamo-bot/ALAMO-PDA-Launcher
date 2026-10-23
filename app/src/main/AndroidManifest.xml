@@ -10,9 +10,13 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Android 11+: hace visible DIGIP al PackageManager sin QUERY_ALL_PACKAGES. -->
+    <!-- Android 11+: permite resolver la aplicación operativa configurada sin QUERY_ALL_PACKAGES. -->
     <queries>
         <package android:name="digip.patagoniawms.prod" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <application

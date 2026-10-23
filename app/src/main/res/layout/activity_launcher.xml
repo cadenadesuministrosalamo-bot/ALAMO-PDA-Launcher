@@ -31,7 +31,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:gravity="center"
-        android:text="Inicie sesión en Control PDA para abrir DIGIP WMS."
+        android:text="Inicie sesión en Control PDA para abrir la aplicación operativa."
         android:textColor="@color/textSecondary"
         android:textSize="15sp" />
 

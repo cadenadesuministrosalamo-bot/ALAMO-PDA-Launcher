@@ -1,0 +1,24 @@
+ALAMO PDA Launcher V2.1
+
+CAMBIOS
+- versionCode 3 / versionName 2.1.0
+- Aplicación operativa resuelta desde la configuración del servidor (package + activity).
+- Polling adaptativo indicado por Apps Script.
+- Notificación Android de mensajes de ADMIN.
+- Prioridades:
+  NORMAL: heads-up silencioso (sin vibración).
+  IMPORTANTE: notificación alta + sonido + vibración corta.
+  URGENTE: notificación alta + sonido + vibración más marcada.
+- Al recibir la notificación informa NOTIFICADO al servidor.
+- Al tocar la notificación abre Control PDA para el popup obligatorio y acuse LEÍDO.
+- Mantiene HACER SONAR / DETENER / PDA ENCONTRADO y recuperación Control PDA / Panel ADMIN.
+- Conserva protección: abrir manualmente el Launcher no abre la aplicación operativa.
+
+COMPILACIÓN
+Subir el contenido del proyecto a la raíz del repositorio ALAMO-PDA-Launcher.
+GitHub Actions incluido: Build ALAMO PDA Launcher V2.1 APK.
+Instalar el APK solo después de una ejecución VERDE de GitHub Actions.
+
+PILOTO
+Instalar inicialmente en un solo PDA (recomendado PDA 004, que se usó en las últimas pruebas).
+Si Android solicita permiso de notificaciones, permitirlo.
