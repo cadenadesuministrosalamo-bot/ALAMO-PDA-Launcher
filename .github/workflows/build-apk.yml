@@ -3,7 +3,7 @@ name: Build ALAMO PDA Launcher V2.2 APK
 on:
   workflow_dispatch:
   push:
-    branches: [ principal ]
+    branches: [ main ]
 
 jobs:
   build:
