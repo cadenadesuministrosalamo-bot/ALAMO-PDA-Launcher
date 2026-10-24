@@ -1,5 +1,6 @@
 package com.alamo.pdalauncher;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -7,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
@@ -16,6 +18,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -29,14 +32,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class RemoteMonitorService extends Service {
 
     public static final String ACTION_LOCAL_FOUND = "com.alamo.pdalauncher.LOCAL_FOUND";
-    private static final String CHANNEL_STATUS = "alamo_remote_status";
-    private static final String CHANNEL_ALARM = "alamo_remote_alarm";
-    private static final String CHANNEL_MSG_NORMAL = "alamo_messages_normal";
-    private static final String CHANNEL_MSG_IMPORTANT = "alamo_messages_important";
-    private static final String CHANNEL_MSG_URGENT = "alamo_messages_urgent";
+    private static final String CHANNEL_STATUS = "alamo_remote_status_v22";
+    private static final String CHANNEL_ALARM = "alamo_remote_alarm_v22";
+    private static final String CHANNEL_MSG_NORMAL = "alamo_messages_normal_v22";
+    private static final String CHANNEL_MSG_IMPORTANT = "alamo_messages_important_v22";
+    private static final String CHANNEL_MSG_URGENT = "alamo_messages_urgent_v22";
     private static final int NOTIFICATION_ID = 7167;
     private static final int MESSAGE_NOTIFICATION_BASE = 7300;
-    private static final long DEFAULT_POLL_MS = 12000L;
+    private static final long DEFAULT_POLL_MS = 10000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -89,6 +92,24 @@ public class RemoteMonitorService extends Service {
     }
 
     @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        // Algunos Android/OEM eliminan servicios al cerrar apps recientes.
+        // Programamos un reinicio ligero para mantener notificaciones y control remoto.
+        if (RemoteStore.isRegistered(this)) {
+            try {
+                Intent restart = new Intent(this, BootReceiver.class);
+                restart.setAction(BootReceiver.ACTION_RESTART_MONITOR);
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+                PendingIntent pi = PendingIntent.getBroadcast(this, 7168, restart, flags);
+                AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+                if (am != null) am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 5000L, pi);
+            } catch (Exception ignored) {}
+        }
+        super.onTaskRemoved(rootIntent);
+    }
+
+    @Override
     public IBinder onBind(Intent intent) { return null; }
 
     private void scheduleNext(long delayMs) {
@@ -138,8 +159,11 @@ public class RemoteMonitorService extends Service {
                             String title = message.optString("asunto", "Mensaje de Administración");
                             String body = message.optString("mensaje", "");
                             String sender = message.optString("enviadoPor", "ADMIN");
-                            handler.post(() -> showOperationalMessage(id, type, priority, title, body, sender));
-                            messageAckAsync(id);
+                            handler.post(() -> {
+                                if (showOperationalMessage(id, type, priority, title, body, sender)) {
+                                    messageAckAsync(id);
+                                }
+                            });
                         }
                     }
                 }
@@ -153,8 +177,9 @@ public class RemoteMonitorService extends Service {
         });
     }
 
-    private void showOperationalMessage(String id, String type, String priority,
+    private boolean showOperationalMessage(String id, String type, String priority,
                                         String title, String body, String sender) {
+        if (!notificationsAllowed()) return false;
         RemoteStore.setLastMessageId(this, id);
         String p = priority == null ? "NORMAL" : priority.trim().toUpperCase();
         String channel = "URGENTE".equals(p) ? CHANNEL_MSG_URGENT
@@ -191,7 +216,11 @@ public class RemoteMonitorService extends Service {
         }
 
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        if (nm != null) nm.notify(MESSAGE_NOTIFICATION_BASE + Math.abs(id.hashCode() % 500), b.build());
+        if (nm != null) {
+            nm.notify(MESSAGE_NOTIFICATION_BASE + Math.abs(id.hashCode() % 500), b.build());
+            return true;
+        }
+        return false;
     }
 
     private void messageAckAsync(String messageId) {
@@ -313,8 +342,11 @@ public class RemoteMonitorService extends Service {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
 
-        NotificationChannel status = new NotificationChannel(CHANNEL_STATUS, "Control PDA", NotificationManager.IMPORTANCE_LOW);
-        status.setDescription("Mantiene disponible el control remoto del PDA.");
+        NotificationChannel status = new NotificationChannel(CHANNEL_STATUS, "Estado de Control PDA", NotificationManager.IMPORTANCE_DEFAULT);
+        status.setDescription("Notificación permanente que confirma que ALAMO PDA Launcher está activo.");
+        status.setSound(null, null);
+        status.enableVibration(false);
+        status.setShowBadge(false);
         nm.createNotificationChannel(status);
 
         NotificationChannel alarm = new NotificationChannel(CHANNEL_ALARM, "Búsqueda de PDA", NotificationManager.IMPORTANCE_HIGH);
@@ -322,7 +354,7 @@ public class RemoteMonitorService extends Service {
         alarm.enableVibration(true);
         nm.createNotificationChannel(alarm);
 
-        NotificationChannel normal = new NotificationChannel(CHANNEL_MSG_NORMAL, "Mensajes operativos", NotificationManager.IMPORTANCE_HIGH);
+        NotificationChannel normal = new NotificationChannel(CHANNEL_MSG_NORMAL, "Mensajes operativos", NotificationManager.IMPORTANCE_DEFAULT);
         normal.setDescription("Avisos generales de Administración.");
         normal.setSound(null, null);
         normal.enableVibration(false);
@@ -341,20 +373,42 @@ public class RemoteMonitorService extends Service {
         nm.createNotificationChannel(urgent);
     }
 
+    private boolean notificationsAllowed() {
+        return Build.VERSION.SDK_INT < 33
+                || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+    }
+
     private Notification buildStatusNotification(boolean sounding) {
         String channel = sounding ? CHANNEL_ALARM : CHANNEL_STATUS;
         Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? new Notification.Builder(this, channel)
                 : new Notification.Builder(this);
         String company = RemoteStore.getCompanyName(this);
+        String pda = RemoteStore.getPda(this);
+        Intent openLauncher = new Intent(this, LauncherActivity.class);
+        openLauncher.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int openFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) openFlags |= PendingIntent.FLAG_IMMUTABLE;
+        PendingIntent openPi = PendingIntent.getActivity(this, 7167, openLauncher, openFlags);
+
         b.setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle(sounding ? "🔊 " + company + " · PDA en búsqueda" : company + " · Control PDA activo")
+                .setContentTitle(sounding ? "🔊 " + company + " · PDA en búsqueda" : company + " Control PDA · " + (pda.isEmpty() ? "Launcher activo" : pda + " ONLINE"))
                 .setContentText(sounding
                         ? "Este equipo está siendo localizado. Pulse ENCONTRADO para detener."
-                        : "Control remoto disponible para " + RemoteStore.getPda(this))
+                        : "Launcher activo · Mensajes y control remoto habilitados")
+                .setContentIntent(openPi)
                 .setOngoing(!sounding)
                 .setAutoCancel(false)
+                .setCategory(Notification.CATEGORY_SERVICE)
                 .setPriority(sounding ? Notification.PRIORITY_MAX : Notification.PRIORITY_LOW);
+
+        if (!sounding && !RemoteStore.getControlUrl(this).isEmpty()) {
+            Intent control = new Intent(Intent.ACTION_VIEW, Uri.parse(RemoteStore.getControlUrl(this)));
+            int controlFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) controlFlags |= PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent controlPi = PendingIntent.getActivity(this, 7169, control, controlFlags);
+            b.addAction(new Notification.Action.Builder(android.R.drawable.ic_menu_view, "ABRIR CONTROL PDA", controlPi).build());
+        }
 
         if (sounding) {
             Intent found = new Intent(this, RemoteActionReceiver.class);

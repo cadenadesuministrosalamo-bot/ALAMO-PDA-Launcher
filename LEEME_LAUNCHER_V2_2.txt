@@ -1,0 +1,24 @@
+ALAMO PDA Launcher V2.2
+
+CAMBIOS
+- versionCode 4 / versionName 2.2.0.
+- Firma permanente de producción mediante GitHub Secrets.
+- A partir de V2.2 las futuras versiones podrán instalarse con ACTUALIZAR sin desinstalar.
+- IMPORTANTE: V2.1 usó firma debug temporal, por lo que V2.2 requiere UNA ÚLTIMA desinstalación/reinstalación.
+- Notificación permanente: empresa + PDA + ONLINE, con acceso a Control PDA.
+- Mensajes de ADMIN reforzados en segundo plano mediante servicio foreground.
+- Reinicio del monitor si Android elimina la tarea reciente.
+- Los botones ABRIR CONTROL PDA y RECUPERACIÓN / PANEL ADMIN permanecen visibles.
+- Si el Launcher aún no está registrado, explica cómo registrarlo.
+- Solicita permiso de notificaciones en Android 13+.
+- Mantiene sonido remoto, PDA ENCONTRADO, protección de acceso y app operativa parametrizable.
+
+FIRMA
+El workflow exige estos GitHub Actions Secrets:
+- ANDROID_KEYSTORE_BASE64
+- ANDROID_KEYSTORE_PASSWORD
+- ANDROID_KEY_ALIAS
+- ANDROID_KEY_PASSWORD
+
+NO suba el keystore ni el archivo de credenciales al repositorio.
+Use el kit privado de firma entregado por separado.

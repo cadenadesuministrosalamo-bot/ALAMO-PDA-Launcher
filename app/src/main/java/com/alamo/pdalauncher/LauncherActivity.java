@@ -197,7 +197,11 @@ public class LauncherActivity extends Activity {
     private void showProtected(String detail) {
         authorizedThisLaunch = false;
         statusText.setText("Acceso protegido");
-        detailText.setText(detail);
+        String finalDetail = detail == null ? "" : detail;
+        if (!notificationsAllowed()) {
+            finalDetail += "\n\nActive las notificaciones de ALAMO PDA Launcher para recibir avisos de Administración mientras trabaja en la aplicación operativa.";
+        }
+        detailText.setText(finalDetail);
         retryButton.setVisibility(View.GONE);
         updateRecoveryButtons();
     }
@@ -212,14 +216,19 @@ public class LauncherActivity extends Activity {
 
     private void updateRecoveryButtons() {
         boolean registered = RemoteStore.isRegistered(this);
-        controlButton.setVisibility(registered ? View.VISIBLE : View.GONE);
-        adminButton.setVisibility(registered ? View.VISIBLE : View.GONE);
+        // V2.2: los accesos de recuperación siempre permanecen visibles.
+        // Si todavía no existe registro, al pulsarlos se explica cómo habilitarlos.
+        controlButton.setVisibility(View.VISIBLE);
+        adminButton.setVisibility(View.VISIBLE);
+        controlButton.setAlpha(registered ? 1.0f : 0.72f);
+        adminButton.setAlpha(registered ? 1.0f : 0.72f);
     }
 
     private void openStoredUrl(boolean admin) {
         String url = admin ? RemoteStore.getAdminUrl(this) : RemoteStore.getControlUrl(this);
         if (url == null || url.trim().isEmpty()) {
-            detailText.setText("Todavía no hay una URL registrada. Abra este Launcher una vez desde Control PDA.");
+            statusText.setText("Recuperación no registrada");
+            detailText.setText("Este Launcher todavía no recibió los datos de este PDA. Abra Control PDA desde el navegador, inicie sesión y pulse ABRIR APLICACIÓN una vez para registrar el equipo.");
             return;
         }
 
@@ -234,6 +243,21 @@ public class LauncherActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 2107);
+        }
+    }
+
+    private boolean notificationsAllowed() {
+        return Build.VERSION.SDK_INT < 33
+                || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 2107 && !notificationsAllowed()) {
+            detailText.setText("Notificaciones desactivadas. Sin este permiso, Administración no podrá avisarle mientras esté trabajando fuera de Control PDA. Puede habilitarlas en Ajustes > Aplicaciones > ALAMO PDA Launcher > Notificaciones.");
+        } else if (requestCode == 2107 && RemoteStore.isRegistered(this)) {
+            RemoteMonitorService.start(this);
         }
     }
 

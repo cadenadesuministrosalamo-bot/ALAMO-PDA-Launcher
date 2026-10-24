@@ -1,0 +1,6 @@
+Firma de producción ALAMO PDA Launcher V2.2+
+Alias: alamo-pda-release
+SHA-256: 90:46:5B:57:83:C4:07:BA:64:D5:8A:63:BC:5B:6A:7F:0E:9A:F7:E1:AF:8C:6F:0C:F3:9E:25:AB:5E:22:FA:5A
+
+Esta huella es pública y sirve para verificar que futuras versiones continúan firmadas con la misma identidad.
+El archivo keystore y sus contraseñas son privados y NO deben subirse al repositorio.

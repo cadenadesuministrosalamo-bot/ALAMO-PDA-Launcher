@@ -22,7 +22,7 @@
         android:gravity="center"
         android:text="Acceso protegido"
         android:textColor="@color/textPrimary"
-        android:textSize="22sp"
+        android:textSize="26sp"
         android:textStyle="bold" />
 
     <TextView
@@ -33,7 +33,7 @@
         android:gravity="center"
         android:text="Inicie sesión en Control PDA para abrir la aplicación operativa."
         android:textColor="@color/textSecondary"
-        android:textSize="15sp" />
+        android:textSize="18sp" />
 
     <Button
         android:id="@+id/retryButton"
@@ -54,8 +54,9 @@
         android:backgroundTint="@color/alamoRed"
         android:text="ABRIR CONTROL PDA"
         android:textColor="@android:color/white"
+        android:textSize="16sp"
         android:textStyle="bold"
-        android:visibility="gone" />
+        android:visibility="visible" />
 
     <Button
         android:id="@+id/adminButton"
@@ -65,7 +66,8 @@
         android:backgroundTint="@color/grayButton"
         android:text="RECUPERACIÓN / PANEL ADMIN"
         android:textColor="@android:color/white"
+        android:textSize="16sp"
         android:textStyle="bold"
-        android:visibility="gone" />
+        android:visibility="visible" />
 
 </LinearLayout>
