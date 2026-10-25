@@ -1,4 +1,4 @@
-name: Build ALAMO PDA Launcher V2.2 APK
+name: Build ALAMO PDA Launcher V2.3 APK
 
 on:
   workflow_dispatch:
@@ -55,5 +55,5 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ALAMO-PDA-Launcher-V2.2-SIGNED
+          name: ALAMO-PDA-Launcher-V2.3-SIGNED
           path: app/build/outputs/apk/release/app-release.apk
