@@ -1,0 +1,17 @@
+ALAMO PDA Launcher V2.3
+
+CAMBIOS
+- versionCode 5 / versionName 2.3.0.
+- Mantiene la firma permanente de producción iniciada en V2.2: se instala como ACTUALIZACIÓN, sin desinstalar.
+- Cola Android real: hasta 10 mensajes nuevos por ciclo, sin esperar a leer el anterior.
+- Cada mensaje genera una notificación independiente y conserva el acuse LEÍDO por separado.
+- Canales V2.3 nuevos para evitar heredar la configuración silenciosa de V2.2.
+- NORMAL: sonido de notificación + vibración breve.
+- IMPORTANTE: prioridad alta + sonido + vibración reforzada.
+- URGENTE: prioridad alta + sonido de alarma + vibración intensa.
+- La notificación permanente de estado sigue siendo silenciosa; mensajes y alarma de búsqueda son independientes.
+- Mantiene Hacer sonar, PDA ENCONTRADO, recuperación, Control PDA y apertura protegida de DIGIP.
+
+FIRMA
+Usa exactamente los mismos cuatro GitHub Actions Secrets de V2.2.
+NO crear una clave nueva y NO desinstalar V2.2 antes de instalar V2.3.

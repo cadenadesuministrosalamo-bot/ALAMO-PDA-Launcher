@@ -16,6 +16,7 @@ final class RemoteStore {
     private static final String KEY_APP_ACTIVITY = "app_activity";
     private static final String KEY_COMPANY_NAME = "company_name";
     private static final String KEY_LAST_MESSAGE_ID = "last_message_id";
+    private static final String KEY_NOTIFIED_MESSAGE_IDS = "notified_message_ids_v23";
 
     private RemoteStore() {}
 
@@ -65,6 +66,34 @@ final class RemoteStore {
     static String getLastMessageId(Context context) { return prefs(context).getString(KEY_LAST_MESSAGE_ID, ""); }
     static void setLastMessageId(Context context, String messageId) {
         prefs(context).edit().putString(KEY_LAST_MESSAGE_ID, value(messageId)).apply();
+    }
+
+    static boolean wasMessageNotified(Context context, String messageId) {
+        String id = value(messageId);
+        if (id.isEmpty()) return false;
+        String raw = prefs(context).getString(KEY_NOTIFIED_MESSAGE_IDS, "");
+        if (raw == null || raw.isEmpty()) return false;
+        String[] parts = raw.split("\\|");
+        for (String part : parts) if (id.equals(part)) return true;
+        return false;
+    }
+
+    static void rememberMessageNotified(Context context, String messageId) {
+        String id = value(messageId);
+        if (id.isEmpty()) return;
+        String raw = prefs(context).getString(KEY_NOTIFIED_MESSAGE_IDS, "");
+        StringBuilder out = new StringBuilder(id);
+        int kept = 1;
+        if (raw != null && !raw.isEmpty()) {
+            String[] parts = raw.split("\\|");
+            for (String part : parts) {
+                if (part == null || part.isEmpty() || id.equals(part)) continue;
+                if (kept >= 60) break;
+                out.append('|').append(part);
+                kept++;
+            }
+        }
+        prefs(context).edit().putString(KEY_NOTIFIED_MESSAGE_IDS, out.toString()).apply();
     }
 
     private static String value(String input) { return input == null ? "" : input.trim(); }

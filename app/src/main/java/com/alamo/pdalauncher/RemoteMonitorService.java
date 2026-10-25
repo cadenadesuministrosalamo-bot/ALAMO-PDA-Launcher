@@ -10,6 +10,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
@@ -24,6 +25,7 @@ import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.concurrent.ExecutorService;
@@ -35,9 +37,9 @@ public class RemoteMonitorService extends Service {
     public static final String ACTION_LOCAL_FOUND = "com.alamo.pdalauncher.LOCAL_FOUND";
     private static final String CHANNEL_STATUS = "alamo_remote_status_v22";
     private static final String CHANNEL_ALARM = "alamo_remote_alarm_v22";
-    private static final String CHANNEL_MSG_NORMAL = "alamo_messages_normal_v22";
-    private static final String CHANNEL_MSG_IMPORTANT = "alamo_messages_important_v22";
-    private static final String CHANNEL_MSG_URGENT = "alamo_messages_urgent_v22";
+    private static final String CHANNEL_MSG_NORMAL = "alamo_messages_normal_v23";
+    private static final String CHANNEL_MSG_IMPORTANT = "alamo_messages_important_v23";
+    private static final String CHANNEL_MSG_URGENT = "alamo_messages_urgent_v23";
     private static final int NOTIFICATION_ID = 7167;
     private static final int MESSAGE_NOTIFICATION_BASE = 7300;
     private static final long DEFAULT_POLL_MS = 10000L;
@@ -151,10 +153,30 @@ public class RemoteMonitorService extends Service {
                         });
                     }
 
-                    JSONObject message = json.optJSONObject("message");
-                    if (message != null) {
-                        String id = message.optString("id", "");
-                        if (!id.isEmpty() && !id.equals(RemoteStore.getLastMessageId(this))) {
+                    JSONArray messages = json.optJSONArray("messages");
+                    if (messages == null) {
+                        JSONObject legacy = json.optJSONObject("message");
+                        if (legacy != null) {
+                            messages = new JSONArray();
+                            messages.put(legacy);
+                        }
+                    }
+
+                    if (messages != null) {
+                        for (int i = 0; i < messages.length(); i++) {
+                            JSONObject message = messages.optJSONObject(i);
+                            if (message == null) continue;
+
+                            String id = message.optString("id", "");
+                            if (id.isEmpty()) continue;
+
+                            // Si ya se mostró localmente pero el acuse de red falló,
+                            // reenviamos el ACK sin volver a molestar al usuario.
+                            if (RemoteStore.wasMessageNotified(this, id)) {
+                                messageAckAsync(id);
+                                continue;
+                            }
+
                             String type = message.optString("tipo", "AVISO_GENERAL");
                             String priority = message.optString("prioridad", "NORMAL");
                             String title = message.optString("asunto", "Mensaje de Administración");
@@ -162,6 +184,7 @@ public class RemoteMonitorService extends Service {
                             String sender = message.optString("enviadoPor", "ADMIN");
                             handler.post(() -> {
                                 if (showOperationalMessage(id, type, priority, title, body, sender)) {
+                                    RemoteStore.rememberMessageNotified(this, id);
                                     messageAckAsync(id);
                                 }
                             });
@@ -181,7 +204,6 @@ public class RemoteMonitorService extends Service {
     private boolean showOperationalMessage(String id, String type, String priority,
                                         String title, String body, String sender) {
         if (!notificationsAllowed()) return false;
-        RemoteStore.setLastMessageId(this, id);
         String p = priority == null ? "NORMAL" : priority.trim().toUpperCase();
         String channel = "URGENTE".equals(p) ? CHANNEL_MSG_URGENT
                 : ("IMPORTANTE".equals(p) ? CHANNEL_MSG_IMPORTANT : CHANNEL_MSG_NORMAL);
@@ -208,12 +230,20 @@ public class RemoteMonitorService extends Service {
                 .setPriority("URGENTE".equals(p) ? Notification.PRIORITY_MAX
                         : ("IMPORTANTE".equals(p) ? Notification.PRIORITY_HIGH : Notification.PRIORITY_DEFAULT));
 
+        b.setGroup("alamo_operational_messages_v23");
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            if ("URGENTE".equals(p) || "IMPORTANTE".equals(p)) {
-                b.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE | Notification.DEFAULT_LIGHTS);
-            } else {
-                b.setDefaults(Notification.DEFAULT_LIGHTS);
-            }
+            Uri sound = "URGENTE".equals(p)
+                    ? RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    : RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            if (sound == null) sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            b.setSound(sound);
+            b.setVibrate("URGENTE".equals(p)
+                    ? new long[]{0, 650, 180, 650, 180, 650}
+                    : ("IMPORTANTE".equals(p)
+                        ? new long[]{0, 300, 120, 300}
+                        : new long[]{0, 180}));
+            b.setDefaults(Notification.DEFAULT_LIGHTS);
         }
 
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -355,22 +385,37 @@ public class RemoteMonitorService extends Service {
         alarm.enableVibration(true);
         nm.createNotificationChannel(alarm);
 
+        Uri notificationSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        AudioAttributes notificationAttrs = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+
         NotificationChannel normal = new NotificationChannel(CHANNEL_MSG_NORMAL, "Mensajes operativos", NotificationManager.IMPORTANCE_DEFAULT);
-        normal.setDescription("Avisos generales de Administración.");
-        normal.setSound(null, null);
-        normal.enableVibration(false);
+        normal.setDescription("Avisos generales de Administración. Sonido y vibración breve.");
+        normal.setSound(notificationSound, notificationAttrs);
+        normal.enableVibration(true);
+        normal.setVibrationPattern(new long[]{0, 180});
         nm.createNotificationChannel(normal);
 
         NotificationChannel important = new NotificationChannel(CHANNEL_MSG_IMPORTANT, "Mensajes importantes", NotificationManager.IMPORTANCE_HIGH);
-        important.setDescription("Llamados y cambios operativos importantes.");
+        important.setDescription("Llamados y cambios operativos importantes. Alerta reforzada.");
+        important.setSound(notificationSound, notificationAttrs);
         important.enableVibration(true);
-        important.setVibrationPattern(new long[]{0, 250, 150, 250});
+        important.setVibrationPattern(new long[]{0, 300, 120, 300});
         nm.createNotificationChannel(important);
 
+        Uri urgentSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        if (urgentSound == null) urgentSound = notificationSound;
+        AudioAttributes urgentAttrs = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
         NotificationChannel urgent = new NotificationChannel(CHANNEL_MSG_URGENT, "Mensajes urgentes", NotificationManager.IMPORTANCE_HIGH);
-        urgent.setDescription("Avisos urgentes de Administración.");
+        urgent.setDescription("Avisos urgentes de Administración. Sonido de alarma y vibración intensa.");
+        urgent.setSound(urgentSound, urgentAttrs);
         urgent.enableVibration(true);
-        urgent.setVibrationPattern(new long[]{0, 700, 250, 700, 250, 700});
+        urgent.setVibrationPattern(new long[]{0, 650, 180, 650, 180, 650});
         nm.createNotificationChannel(urgent);
     }
 

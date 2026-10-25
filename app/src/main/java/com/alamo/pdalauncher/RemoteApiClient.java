@@ -71,7 +71,7 @@ final class RemoteApiClient {
             connection.setInstanceFollowRedirects(true);
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("User-Agent", "ALAMO-PDA-Launcher/2.1");
+            connection.setRequestProperty("User-Agent", "ALAMO-PDA-Launcher/2.3");
 
             int code = connection.getResponseCode();
             InputStream stream = code >= 200 && code < 400

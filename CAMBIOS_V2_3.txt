@@ -1,0 +1,12 @@
+ALAMO PDA Launcher V2.3
+versionCode 5 / versionName 2.3.0
+
+- Misma firma permanente de V2.2: instalar como ACTUALIZACION, NO desinstalar.
+- Soporta array "messages" de hasta 10 notificaciones por poll.
+- Historial local de IDs notificados para evitar duplicados.
+- Reintenta el ACK si la notificación ya se mostró pero falló la red.
+- Nuevos canales v23 para sonido/vibración reales.
+- NORMAL: sonido + vibración breve.
+- IMPORTANTE: sonido + vibración reforzada.
+- URGENTE: sonido de alarma + vibración intensa.
+- Estado persistente sigue silencioso.
